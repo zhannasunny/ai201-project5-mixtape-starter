@@ -31,7 +31,7 @@ Tables:
 5) playlist_service - creating playlists and retrieving their songs
 
 ## Data Flow
-routes/playlists.py: POST /playlists/<playlist_id>/songs. ROute pulls song_id and added_by from JSON data, calls add_to_playlist(playlist_id, song_id, added_by) in notification_service. That service (add_to_playlist speficially) adds the song in the playlist and checks if the person who shared the song is the same person who added it to the playlist. If not, it notifies the user who shared a song that the song has been added to someone's playlist. Route returns 201
+routes/playlists.py: POST /playlists/<playlist_id>/songs. Route pulls song_id and added_by from JSON data, calls add_to_playlist(playlist_id, song_id, added_by) in notification_service. That service (add_to_playlist speficially) adds the song in the playlist and checks if the person who shared the song is the same person who added it to the playlist. If not, it notifies the user who shared a song that the song has been added to someone's playlist. Route returns {"message": "Song added to playlist"}, 201
 
 ## Patterns
 I noticed:
