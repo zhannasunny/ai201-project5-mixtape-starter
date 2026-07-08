@@ -55,11 +55,33 @@ darius still appeared as "listening now" (last listen 20h ago) alongside simone 
 kenji who had listened minutes earlier. This matches nova's report that friends whose
 last listen was yesterday evening still show up the next morning.
 
-**How I found the root cause:** _(TODO)_
+**How I found the root cause:** I traced the call chain from the route. In
+`routes/feed.py`, `listening_now()` calls `get_friends_listening_now()` in
+`feed_service.py`. Reading that function, I saw the cutoff was computed as
+`datetime.now(timezone.utc) - RECENT_THRESHOLD`, where `RECENT_THRESHOLD` is a fixed
+`timedelta(hours=24)`. That told me the feed was using a rolling 24-hour window
+measured backward from the current moment, not a "today" boundary - which is exactly
+the kind of thing that would let last night's listens linger into the morning.
 
-**The root cause:** _(TODO)_
+**The root cause:** `get_friends_listening_now()` filtered events with
+`listened_at >= now - timedelta(hours=24)` - a *rolling* 24-hour window. "Within the
+last 24 hours" is not the same as "today": at 9am, that window reaches back to 9am
+*yesterday*, so it includes essentially all of yesterday evening. darius's 11pm listen
+was only ~10 hours old at 9am, well inside the window, so he kept showing as
+"listening now" the next morning. Any rolling window (24h or otherwise) always spills
+into the previous day by its own length - the code needed a fixed daily boundary, not
+a duration.
 
-**My fix and side-effect check:** _(TODO)_
+**My fix and side-effect check:** I replaced the rolling threshold with the start of
+the current calendar day: `cutoff = now.replace(hour=0, minute=0, second=0,
+microsecond=0)` (midnight UTC), so only listens from today qualify. I also removed the
+now-unused `RECENT_THRESHOLD` constant. Side-effect check: I re-ran my reproduction and
+darius (listened ~20h ago, yesterday) is now excluded, while friends who listened
+today still appear. Because this is a boundary bug, I tested both sides of midnight: a
+listen at 00:30 today correctly *appears*, and a listen at 23:30 yesterday is correctly
+*excluded*. I confirmed the timezone-aware `cutoff` compares correctly against the
+stored `listened_at` values, and that `get_activity_feed()` (which never used the
+threshold) is unaffected.
 
 ## Issue #4 - Missing notification when a friend rates a song
 
