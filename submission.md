@@ -1,4 +1,5 @@
 # AI Usage
+I used AI to mostly explain things to me and make my writing better. I asked it to double check if my understanding is correct on codebase map. I also asked it about a lot of git usage - it has been a while since I used it. Additionally, I asked it to help me reproduce the bugs. I however asked it to not give me any answers on where the bugs are or how to fix them. Initially I chose issue 3 instead of 2, and when I reached a dead end in replicating it, I turned to AI help as well - and it helped me realize that my version of SQL was deduplicating things, so I had to choose a different issue. This really helped me to not get stuck.
 
 # Codebase Map
 
