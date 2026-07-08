@@ -108,8 +108,25 @@ invisible from the API alone. The dropped song is always the one at the highest
 position (the most recently ordered / newest), matching darius's report that "the
 missing one is always whatever was added most recently."
 
-**How I found the root cause:** _(TODO)_
+**How I found the root cause:** I traced the call chain from the route down. In
+`routes/playlists.py`, `get_songs()` delegates to `get_playlist_songs()` in
+`playlist_service.py`. Reading that function, the query itself is correct - it selects
+all songs for the playlist and orders them by `playlist_entries.position` ascending -
+so the data and ordering were fine. That narrowed the problem to the return statement,
+where I saw the list was being sliced with `[:-1]`.
 
-**The root cause:** _(TODO)_
+**The root cause:** `get_playlist_songs()` builds the full, correctly-ordered list of
+songs but returns `songs[:-1]`. In Python, `[:-1]` returns every element *except the
+last*, so the song at the highest position is always dropped. Because the position
+ordering is ascending, that last element is the most recently ordered / newest song -
+which is exactly the one darius saw disappear. The route computes its `count` from this
+already-truncated list, so the API reports 6 and never reveals that a 7th exists.
 
-**My fix and side-effect check:** _(TODO)_
+**My fix and side-effect check:** Changed `return [song.to_dict() for song in
+songs[:-1]]` to `return [song.to_dict() for song in songs]`, so the complete list is
+returned. Side-effect check: I reran my reproduction and confirmed "Friday Energy"
+now returns all 7 songs in correct position order (1-7), with Harlem Renaissance
+present and no songs missing. Ordering is unaffected because the `order_by(position)`
+in the query was never the problem. This fix also repairs a subtler case: under the
+old `[:-1]`, a playlist with a single song returned 0 songs (the slice emptied it) -
+returning `songs` now correctly returns that one song.
